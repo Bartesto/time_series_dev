@@ -1,0 +1,140 @@
+---
+title: "chngpt means ReadMe"
+author: "Bart Huntley"
+date: "Monday, May 25, 2015"
+output: html_document
+---
+
+This function uses the "*changepoint*" package to define breaks in means of a time series trace. Various methods can be called within the cpt.mean call. For further details on this call and the changepoint package refer to <https://www.google.com.au/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0CB0QFjAA&url=http%3A%2F%2Fcran.r-project.org%2Fweb%2Fpackages%2Fchangepoint%2Fchangepoint.pdf&ei=V5diVf_4E8WMmwWmlIH4Aw&usg=AFQjCNGkR3zx2bsbbYA4JfSRtExNhFAikQ&sig2=tnWVwxUu8wRS37Lnix7Ftg>.
+
+### Notes
+
+The starting point for this function is a **...mtsd.csv** file. This .csv file is the result of running **mtsd.r** on cloud QA'd data - see **mtsd_ReadMe** for further information.
+
+The output ggplots will be saved to a folder named "ts-chgpt-graphs-TODAYS DATE". Running this function on another day will save the output to a folder with that days date. This is an attempt to help keep iterations of graphs clearly identifiable.
+
+The output ggplot dimensions have been optimised for the creation of .pdf ggplots that fit a standard word doc in portrait layout. If you are creating outputs with different file extensions (see step 3 for details) or different page layouts and the dimensions do not suit, these can be adjusted in the final line of the function (line 109). 
+
+Please do not save changes to this script. If you need to tweak the script for specific project requirements, please save a local copy of this script in the project folder. This will aid repeatability of the analysis and maintain the integrity of the original script.
+
+
+
+### Details
+1. Step 1 - Run the code to create the function
+```{r, eval=FALSE}
+chgpt_means <- function(dir, csv, survey, out){
+        
+        is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
+        load_or_install<-function(package_names)  
+        {  
+                for(package_name in package_names)  
+                {  
+                        if(!is_installed(package_name))  
+                        {  
+                                install.packages(package_name,repos="http://cran.csiro.au/")  
+                        }  
+                        library(package_name,character.only=TRUE,quietly=TRUE,verbose=FALSE)  
+                }  
+        }  
+        load_or_install(c("lubridate","ggplot2", "dplyr","tidyr", "grid", "gridExtra",
+                          "changepoint"))
+        
+        ##Generic tasks
+        setwd(dir)
+        df <- read.csv(csv, header = TRUE)
+        df <- df[,-1]
+        df[,1] <- as.Date(df[,1])
+        
+        sname <- names(df)[-1]
+        folder <- paste0("ts-chgpt-graphs-", Sys.Date())
+        if(!file.exists(folder)){ dir.create(folder)}
+        dir.create(folder)
+        setwd(paste(dir,folder, sep="\\"))
+
+        for (i in 1:length(sname)){
+                
+                df2.i <- df[, c(1, 1+i)]
+                df2.i$label <- factor(rep("ts", by=length(df2.i[,1])))
+                
+                #Helper function
+                indexer <- function(){
+                        ev <- vector(mode="numeric", length=length(cpts))
+                        for(j in 1:length(cpts)){
+                                ev[j] <- as.numeric(df2.i[cpts[j],1])
+                        }
+                        ev
+                }
+                #Changepoint
+                site.ts <- ts(df2.i[,2], frequency=12, 
+                              start=c(as.numeric(year(df2.i[1,1])),
+                                      as.numeric(month(df2.i[1,1]))),
+                              end=c(as.numeric(year(tail(df2.i[,1], n=1))),
+                                    as.numeric(month(tail(df2.i[,1], n=1)))))
+                mvalue <- cpt.mean(site.ts, method="BinSeg")
+                
+                cpts <- mvalue@cpts
+                
+                #raw dates of chgpts - mix of star and end dates for periods
+                date <- c(df[1,1], as.Date(indexer()))
+                
+                cptdf <- data.frame(start=date[1:length(date)-1],
+                                    end=date[-1], y=mvalue@param.est$mean, label=factor("mean"))
+                #df for vertical line handling
+                vertdf <- data.frame(x=as.Date(survey), y=c(-Inf, Inf),
+                                     Survey=factor(year(as.Date(survey))))
+                
+                p <- ggplot()+
+                        geom_point(data=df2.i, aes_string(x="date", y=sname[i], colour="label"))+
+                        geom_line(data=df2.i, aes_string(x="date", y=sname[i], colour="label"))+
+                        scale_colour_manual(values=c("black"),
+                                            name=sname[i],
+                                            breaks=as.character(df2.i$label),
+                                            labels=as.character(df2.i$label))+
+                        geom_segment(data=cptdf, aes(x=start, y=y, xend=end, yend=y), colour="red")+
+                        geom_line(aes(x,y, linetype=Survey), colour='blue', size = 0.5, vertdf)+
+                        coord_cartesian(ylim = c(-10, 80))+
+                        theme_bw()+
+                        xlab("")+
+                        ylab("Vegetation Cover %")+
+                        theme(legend.justification=c(0,1), 
+                              legend.position=c(0,1),
+                              axis.title.y= element_text(size=15),
+                              axis.text.y = element_text(angle=90, size=15),
+                              axis.text.x = element_text(size=15),
+                              legend.title = element_text(size = 15),
+                              legend.text = element_text(size = 15)) 
+                
+                
+                sname.i<-sname[i]
+                filename<-paste0(sname.i, "-chgpt-plot",out)
+
+                ggsave(file=filename, p, width = 22.5, height = 13.5, units = "cm")
+        }
+}
+```
+
+2. Step 2 - Define the function arguments (see examples)
+    + dir = working directory filepath where function script and **...mtsd.csv** reside. Ensure backslashes are doubled and filepath is encapsulated in " "
+    + csv = name of .csv file, including .csv extension, encapsulated in " "
+    + out = output file extension. Suggest ".pdf" for scalable vector graphics however can be ".jpeg"", ".png"" etc.
+    + survey = "yyyy-mm-dd" of a date of significance, in this case when a veg survey was conducted. Input is used to place a vertical line on the output plot.
+```{r, eval=FALSE}
+dir="Z:\\DEC\\Vegmachine_SharkBay\\Working\\Bernier_Dorre\\Working\\analysis"
+csv="Bernier_Dorre_mtsd.csv"
+out=".pdf"
+survey="1998-09-01"
+```
+
+3. Step 3 - Run the function call
+```{r, eval=FALSE}
+chgpt_means(dir, csv, out, survey)
+```
+
+###Errors
+If an error appears try
+```{r, eval=FALSE}
+rm(list=ls())
+```
+to clear the working environment and re-run the steps in order. If problems persist have a chat to Bart.
+
+
