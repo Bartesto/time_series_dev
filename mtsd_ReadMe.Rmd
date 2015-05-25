@@ -13,9 +13,23 @@ The starting point for this function is a .csv file. This .csv file should be th
 1. Step 1 - Run the code to create the function
 ```{r, eval=FALSE}
 mtsd <- function(dir, csv, project) {
-        library(lubridate)
-        library(dplyr)
-        library(zoo)
+        
+        is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
+        
+        load_or_install<-function(package_names)  
+        {  
+                for(package_name in package_names)  
+                {  
+                        if(!is_installed(package_name))  
+                        {  
+                                install.packages(package_name,repos="http://cran.csiro.au/")  
+                        }  
+                        library(package_name,character.only=TRUE,quietly=TRUE,verbose=FALSE)  
+                }  
+        }  
+        
+        load_or_install(c("lubridate","dplyr","zoo"))
+        
         setwd(dir)
         df <- read.csv(csv, header = TRUE)
         df$date <- dmy(df$date)#create date here to order by
@@ -57,10 +71,10 @@ mtsd(dir, csv, project)
 ```
 
 ###Errors
-An error may arise if the required packages ("lubridate", "dplyr", "zoo") are not installed on your machine. To install any of these packages run the following:
+If an error appears try
 ```{r, eval=FALSE}
-install.packages(c("lubridate", "dplyr", "zoo")
+rm(list=ls())
 ```
-Once the packages are installed start from Stage 1 again.
+to clear the working environment and re-run the steps in order. If problems persist have a chat to Bart.
 
 
