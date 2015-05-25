@@ -17,14 +17,21 @@ survey="1998-09-01"
 
 chgpt_means <- function(dir, csv, survey, out){
         
-        library(lubridate)
-        library(ggplot2)
-        library(dplyr)
-        library(tidyr)
-        library(grid)
-        library(gridExtra)
-        library(changepoint)
-        
+        is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
+        load_or_install<-function(package_names)  
+        {  
+                for(package_name in package_names)  
+                {  
+                        if(!is_installed(package_name))  
+                        {  
+                                install.packages(package_name,repos="http://cran.csiro.au/")  
+                        }  
+                        library(package_name,character.only=TRUE,quietly=TRUE,verbose=FALSE)  
+                }  
+        }  
+        load_or_install(c("lubridate","ggplot2", "dplyr","tidyr", "grid", "gridExtra",
+                          "changepoint"))
+                
         ##Generic tasks
         setwd(dir)
         df <- read.csv(csv, header = TRUE)
