@@ -75,7 +75,7 @@ chgpt_means <- function(dir, csv, survey, out){
                 vertdf <- data.frame(x=as.Date(survey), y=c(-Inf, Inf),
                                      Survey=factor(year(as.Date(survey))))
                 
-                p2 <- ggplot()+
+                p <- ggplot()+
                         geom_point(data=df2.i, aes_string(x="date", y=sname[i], colour="label"))+
                         geom_line(data=df2.i, aes_string(x="date", y=sname[i], colour="label"))+
                         scale_colour_manual(values=c("black"),
@@ -100,7 +100,7 @@ chgpt_means <- function(dir, csv, survey, out){
                 sname.i<-sname[i]
                 filename<-paste0(sname.i, "-chgpt-plot",out)
 
-                ggsave(file=filename, p2, width = 22.5, height = 13.5, units = "cm")
+                ggsave(file=filename, p, width = 22.5, height = 13.5, units = "cm")
         }
 }
 
