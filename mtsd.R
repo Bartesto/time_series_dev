@@ -48,11 +48,16 @@ mtsd <- function(dir, csv, project) {
                 mutate(month = month(date), year = year(date)) %>%
                 group_by(year, month) %>%
                 summarise_each(funs(mean(., na.rm = TRUE)))
-        df3[is.na(df3)] <- NA #replaces NaN's
-        emd <- ymd(paste0(as.character(tail(df3[,1], n=1)), 
-                          "-", as.character(tail(df3[,2], n=1)), 
-                          "-", as.character(day(df[1,1]))))#endmonthday 
-        df3[,3] <- seq(df[1,1], emd, by = 'months')#clean date vals to reg day of each mth
+        ##Need to 'create' fictitious star and end dates to give sensible summary dates
+        end_day <- ifelse(day(df[1,1])> 28, 28, day(df[1,1]))#handles a > 28day start day for leap years
+        start_day <- end_day
+        start_date <- ymd(paste0(as.character(year(df[1,1])),
+                                 "-", as.character(month(df[1,1])),
+                                 "-", as.character(start_day)))
+        end_date <- ymd(paste0(as.character(tail(df3[,1], n=1)), 
+                               "-", as.character(tail(df3[,2], n=1)), 
+                               "-", as.character(end_day)))#end date 
+        df3[,3] <- seq(start_date, end_date, by = 'months')#clean date vals to reg day of each mth
         df3 <- df3[,c(-1,-2)]#drop year and mth columns
         df4 <- data.frame( df3[,1], na.approx(df3[,-1], rule=2))
         write.csv(df4, file = paste0(project, "_mtsd.csv"))
