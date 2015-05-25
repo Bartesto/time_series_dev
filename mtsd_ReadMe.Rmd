@@ -32,6 +32,7 @@ mtsd <- function(dir, csv, project) {
         
         setwd(dir)
         df <- read.csv(csv, header = TRUE)
+        df <- df[,1:33] ##ONLY for this specific df that contains previous models
         df$date <- dmy(df$date)#create date here to order by
         df <- df[order(df$date),]#Very Important - order it!
         all <- seq(df[1,1], tail(df[,1], n=1), by = 'days') #daily date sequence for whole period
@@ -44,13 +45,21 @@ mtsd <- function(dir, csv, project) {
                 group_by(year, month) %>%
                 summarise_each(funs(mean(., na.rm = TRUE)))
         df3[is.na(df3)] <- NA #replaces NaN's
-        emd <- ymd(paste0(as.character(tail(df3[,1], n=1)), 
+        ##Need to 'create' fictitious start and end dates to give sensible summary dates
+        end_day <- ifelse(day(df[1,1])> 28, 28, day(df[1,1]))#handles a > 28day start day for leap years
+        start_day <- end_day
+        start_date <- ymd(paste0(as.character(year(df[1,1])),
+                                 "-", as.character(month(df[1,1])),
+                                 "-", as.character(start_day)))
+        end_date <- ymd(paste0(as.character(tail(df3[,1], n=1)), 
                           "-", as.character(tail(df3[,2], n=1)), 
-                          "-", as.character(day(df[1,1]))))#endmonthday 
-        df3[,3] <- seq(df[1,1], emd, by = 'months')#clean date vals to reg day of each mth
+                          "-", as.character(end_day)))#end date 
+        df3[,3] <- seq(start_date, end_date, by = 'months')#clean date vals to reg day of each mth
         df3 <- df3[,c(-1,-2)]#drop year and mth columns
         df4 <- data.frame( df3[,1], na.approx(df3[,-1], rule=2))
         write.csv(df4, file = paste0(project, "_mtsd.csv"))
+        
+}
         
 }
 ```
