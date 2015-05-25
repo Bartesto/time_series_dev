@@ -48,7 +48,7 @@ mtsd <- function(dir, csv, project) {
                 mutate(month = month(date), year = year(date)) %>%
                 group_by(year, month) %>%
                 summarise_each(funs(mean(., na.rm = TRUE)))
-        ##Need to 'create' fictitious star and end dates to give sensible summary dates
+        ##Need to 'create' fictitious start and end dates to give sensible summary dates
         end_day <- ifelse(day(df[1,1])> 28, 28, day(df[1,1]))#handles a > 28day start day for leap years
         start_day <- end_day
         start_date <- ymd(paste0(as.character(year(df[1,1])),
