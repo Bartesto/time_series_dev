@@ -40,7 +40,7 @@ chgpt_means <- function(dir, csv, survey, out){
         
         sname <- names(df)[-1]
         folder <- paste0("ts-chgpt-graphs-", Sys.Date())
-        dir.create(folder)
+        if(!file.exists(folder)){ dir.create(folder)}
         setwd(paste(dir,folder, sep="\\"))
 
         for (i in 1:length(sname)){
