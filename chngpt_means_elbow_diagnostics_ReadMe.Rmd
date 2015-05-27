@@ -1,0 +1,233 @@
+---
+title: "Change point means elbow diagnostics"
+author: "Bart Huntley"
+date: "Wednesday, May 27, 2015"
+output: html_document
+---
+
+This script creates elbow plots. It takes a cpt.mean function call from the "*changepoint*" package. It computes 1000 iterations of increasing penalty values, the number of the corresponding change points detected and plots them against each other. The idea behind this is to determine at what point the penalty value might represent a reasonable number of change points. See the following links for discussions on usage <http://stats.stackexchange.com/questions/60245/penalty-value-in-changepoint-analysis/60440#60440> and <http://stats.stackexchange.com/questions/59755/change-point-analysis/59843#59843>.
+
+### Notes
+
+The starting point for this function is a **...mtsd.csv** file. This .csv file is the result of running **mtsd.r** on cloud QA'd data - see **mtsd_ReadMe** for further information.
+
+The output ggplots will be saved to a folder named "ts-chgpt-elbow-plots-TODAYS DATE". Running this function on another day will save the output to a folder with that days date. This is an attempt to help keep iterations of graphs clearly identifiable.
+
+The output ggplot dimensions have been optimised for the creation of .pdf ggplots that fit a standard word doc in portrait layout. If you are creating outputs with different file extensions (see step 3 for details) or different page layouts and the dimensions do not suit, these can be adjusted in the final line of the function (line 109). 
+
+Please do not save changes to this script. If you need to tweak the script for specific project requirements, please save a local copy of this script in the project folder. This will aid repeatability of the analysis and maintain the integrity of the original script.
+
+This script takes a few minutes to compute the necessary iterations (be patient - roughly 1 min for 37 sites with 1000 iterations per site).
+
+### Details
+Run the script as is after changing the dir, csv and out variables as needed.
+```{r, eval=FALSE}
+dir="Z:\\DEC\\Vegmachine_SharkBay\\Working\\Bernier_Dorre\\Working\\analysis"
+csv="Bernier_Dorre_mtsd.csv"
+out=".jpeg"
+
+is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
+load_or_install<-function(package_names)  
+{  
+        for(package_name in package_names)  
+        {  
+                if(!is_installed(package_name))  
+                {  
+                        install.packages(package_name,repos="http://cran.csiro.au/")  
+                }  
+                library(package_name,character.only=TRUE,quietly=TRUE,verbose=FALSE)  
+        }  
+}  
+load_or_install(c("lubridate","ggplot2", "dplyr","tidyr", "grid", "gridExtra",
+                  "changepoint"))
+
+
+setwd(dir)
+df <- read.csv(csv, header = TRUE)
+df <- df[,-1]
+df[,1] <- as.Date(df[,1])
+
+sname <- names(df)[-1]
+nfolder <- paste0("ts-chgpt-elbow-plots-", Sys.Date())
+if(!file.exists(nfolder)){dir.create(nfolder)}
+setwd(paste(dir,nfolder, sep="\\"))
+
+edf2 <- data.frame(matrix(ncol = length(sname), nrow = 1000), stringsAsFactors = FALSE)
+colnames(edf2) <- sname
+
+for (i in 1:length(sname)){
+        df2.i <- df[, c(1, 1+i)]
+        df2.i$label <- factor(rep("ts", by=length(df2.i[,1])))
+        
+        #Helper function
+        indexer <- function(){
+                ev <- vector(mode="numeric", length=length(cpts))
+                for(j in 1:length(cpts)){
+                        ev[j] <- as.numeric(df2.i[cpts[j],1])
+                }
+                ev
+        }
+        site.ts <- ts(df2.i[,2], frequency=12, 
+                      start=c(as.numeric(year(df2.i[1,1])),
+                              as.numeric(month(df2.i[1,1]))),
+                      end=c(as.numeric(year(tail(df2.i[,1], n=1))),
+                            as.numeric(month(tail(df2.i[,1], n=1)))))
+        # Empty vector for 1000 iterations
+        elbow <- vector(mode="numeric", length=1000)
+        # Binary method Q length must be <= length of ts/2
+        for (j in 1:1000){
+                ind <- 0+j
+                mvalue <- cpt.mean(site.ts, method="BinSeg", penalty = "Manual", 
+                                   pen.value = ind, Q=length(site.ts)/2)
+                
+                elbow[j] <- length(mvalue@cpts)
+        }
+        edf2[,i] <- elbow
+}
+
+edf2$penalty <- 1:1000
+
+for (k in 1:length(sname)){
+        p3 <-     ggplot(data=edf2 ,aes_string(x="penalty", y="edf2[,k]"))+
+                #geom_point()+
+                geom_line()+
+                theme_bw()+
+                #                 annotate("text", 850, 80, label = paste("est.value = ", min(edf2[,k])),
+                #                          size=8, colour = "red")+
+                ylab("no. of change pts")+
+                xlab("penalty value")
+        sname.i<-sname[k]
+        filename<-paste0(sname.i, "-elbow-plot", out)
+        ggsave(file=filename, p3)
+        
+        
+}
+
+```
+
+The idea is that a penalty value is selected where the curve slows and flattens. An example of a plot follows.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+rm(list=ls())
+dir="Z:\\DEC\\Vegmachine_SharkBay\\Working\\Bernier_Dorre\\Working\\analysis"
+csv="Bernier_Dorre_mtsd.csv"
+out=".jpeg"
+
+is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
+load_or_install<-function(package_names)  
+{  
+        for(package_name in package_names)  
+        {  
+                if(!is_installed(package_name))  
+                {  
+                        install.packages(package_name,repos="http://cran.csiro.au/")  
+                }  
+                library(package_name,character.only=TRUE,quietly=TRUE,verbose=FALSE)  
+        }  
+}  
+load_or_install(c("lubridate","ggplot2", "dplyr","tidyr", "grid", "gridExtra",
+                  "changepoint"))
+
+
+setwd(dir)
+df <- read.csv(csv, header = TRUE)
+df <- df[,-1]
+df[,1] <- as.Date(df[,1])
+
+sname <- names(df)[-1]
+
+edf2 <- data.frame(matrix(ncol = length(sname), nrow = 1000), stringsAsFactors = FALSE)
+colnames(edf2) <- sname
+
+for (i in 1:length(sname)){
+        df2.i <- df[, c(1, 1+i)]
+        df2.i$label <- factor(rep("ts", by=length(df2.i[,1])))
+        
+        #Helper function
+        indexer <- function(){
+                ev <- vector(mode="numeric", length=length(cpts))
+                for(j in 1:length(cpts)){
+                        ev[j] <- as.numeric(df2.i[cpts[j],1])
+                }
+                ev
+        }
+        site.ts <- ts(df2.i[,2], frequency=12, 
+                      start=c(as.numeric(year(df2.i[1,1])),
+                              as.numeric(month(df2.i[1,1]))),
+                      end=c(as.numeric(year(tail(df2.i[,1], n=1))),
+                            as.numeric(month(tail(df2.i[,1], n=1)))))
+        # Empty vector for 1000 iterations
+        elbow <- vector(mode="numeric", length=1000)
+        # Binary method Q length must be <= length of ts/2
+        for (j in 1:1000){
+                ind <- 0+j
+                mvalue <- cpt.mean(site.ts, method="BinSeg", penalty = "Manual", 
+                                   pen.value = ind, Q=length(site.ts)/2)
+                
+                elbow[j] <- length(mvalue@cpts)
+        }
+        edf2[,i] <- elbow
+}
+
+edf2$penalty <- 1:1000
+
+
+
+k=1
+
+ggplot(data=edf2 ,aes_string(x="penalty", y="edf2[,k]"))+
+                #geom_point()+
+                geom_line()+
+                theme_bw()+
+                #                 annotate("text", 850, 80, label = paste("est.value = ", min(edf2[,k])),
+                #                          size=8, colour = "red")+
+                ylab("no. of change pts")+
+                xlab("penalty value")
+
+
+```
+
+Interpreting where on the curve your penalty value will be, is up to you. For an example though, if you were happy that the penalty value at 250 looks about right, then we can find out how many changepoints will be found.
+
+edf2 is a data frame holding all the values. The first 3 rows looks like this:
+```{r}
+head(edf2, n=3)
+```
+
+Therefore to subset the edf2 dataframe to find our number of changepoints at the first site (BI01) with a penalty of 250 you would run:
+```{r}
+edf2[,1][250]
+```
+To alter the query for another site find the corresponding column number for the site and adjust 
+
+```
+edf2[,x][250] where x= column number
+```
+
+To flip the query and work out the penalty score required to return a fixed number of changepoints run the following:
+```{r}
+edf2[edf2[,1]<=8, "penalty"][1]
+```
+The above finds what penalty score will return 8 change points. To alter the query for another site and or number of change points adjust
+
+```
+edf2[edf2[,x]<=y, "penalty"][1] where x = the column number and y = number of change points.
+```
+
+So what do you do with a penalty number? 
+
+This number becomes the value of Q in the cpt.mean call in the **chngpt_means.R** function. First find the line of code that looks like this:
+
+```
+mvalue <- cpt.mean(site.ts, method="BinSeg")
+```
+
+and replace it with:
+
+```
+mvalue <- cpt.mean(site.ts, method="BinSeg", Q = q) where q = penalty value
+```
+
+Please note that changing this value in the **chngpt_means.R** fucntion will change this globally...i.e all sites will have this penalty imposed. It is a good idea to eyeball all of your change point mean plots initially (created from the original **chngpt_means.R** function) to see which if any might need the number of change points altered. If you feel confident in only changing this call for your required sites then alter the script accordingly. If you have any doubts see Bart for individual plots.
+
+Please remember to save the functions you use for a project analysis with project initials in the name. This will ensure that original scripts and functions are not over written and that transparency and reproducibility is maintained for each project.
