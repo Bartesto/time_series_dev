@@ -36,7 +36,7 @@ df <- df[,-1]
 df[,1] <- as.Date(df[,1])
 
 sname <- names(df)[-1]
-nfolder <- paste0("ts-chgpt-graphs-elbow-plots", Sys.Date())
+nfolder <- paste0("ts-chgpt-elbow-plots-", Sys.Date())
 if(!file.exists(nfolder)){dir.create(nfolder)}
 setwd(paste(dir,nfolder, sep="\\"))
 
