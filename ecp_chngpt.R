@@ -17,7 +17,7 @@ project="TEC"
 
 
 
-ecp_chgpt <- function(dir, csv, sig, survey, out){
+ecp_chgpt <- function(dir, csv, sig, survey, out, project){
         
         is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
         load_or_install<-function(package_names)  
@@ -98,4 +98,4 @@ ecp_chgpt <- function(dir, csv, sig, survey, out){
         }
 }
 
-ecp_chgpt(dir, csv, sig, survey, out)
+ecp_chgpt(dir, csv, sig, survey, out, project)
