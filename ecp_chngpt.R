@@ -13,6 +13,7 @@ csv="Bernier_Dorre_mtsd.csv"
 sig=0.002
 out=".pdf"
 survey="1998-09-01"
+project="TEC"
 
 
 
@@ -40,7 +41,7 @@ ecp_chgpt <- function(dir, csv, sig, survey, out){
         df[,1] <- as.Date(df[,1])
         
         sname <- names(df)[-1]
-        folder <- paste0("ts-ECP-chgpt-graphs-", Sys.Date())
+        folder <- paste0(project, "-ts-ECP-chgpt-graphs-", Sys.Date())
         if(!file.exists(folder)){ dir.create(folder)}
         setwd(paste(dir,folder, sep="\\"))
 
