@@ -1,0 +1,217 @@
+---
+title: "ECP Change Point ReadMe"
+author: "Bart Huntley"
+date: "Thursday, May 28, 2015"
+output: html_document
+---
+
+
+This function uses the "*ecp*" package to define breaks in a time series trace. The benefit that this package has over the "*changepoint*" package is that it makes as few assumptions about the data as possible and also allows the user to set significance values. It uses a divisive algorithm which sequentially identifies break points. For further detail see <http://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf>
+
+### Notes
+
+The starting point for this function is a **...mtsd.csv** file. This .csv file is the result of running **mtsd.r** on cloud QA'd data - see **mtsd_ReadMe** for further information.
+
+The output ggplots will be saved to a folder named "PROJECT-ts-chgpt-graphs-TODAYS DATE". PROJECT is user defined. Running this function on another day will save the output to a folder with that days date. This is an attempt to help keep iterations of graphs clearly identifiable.
+
+The output ggplot dimensions have been optimised for the creation of .pdf ggplots that fit a standard word doc in portrait layout. If you are creating outputs with different file extensions (see step 3 for details) or different page layouts and the dimensions do not suit, these can be adjusted in the final line of the function (line 109). 
+
+Please do not save changes to this script. If you need to tweak the script for specific project requirements, please save a local copy of this script in the project folder. This will aid repeatability of the analysis and maintain the integrity of the original script.
+
+
+
+### Details
+1. Step 1 - Run the code to create the function
+```{r, eval=FALSE}
+ecp_chgpt <- function(dir, csv, sig, survey, out){
+        
+        is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
+        load_or_install<-function(package_names)  
+        {  
+                for(package_name in package_names)  
+                {  
+                        if(!is_installed(package_name))  
+                        {  
+                                install.packages(package_name,repos="http://cran.csiro.au/")  
+                        }  
+                        library(package_name,character.only=TRUE,quietly=TRUE,verbose=FALSE)  
+                }  
+        }  
+        load_or_install(c("lubridate","ggplot2", "dplyr","tidyr", "grid", "gridExtra",
+                          "ecp"))
+                
+        ##Generic tasks
+        setwd(dir)
+        df <- read.csv(csv, header = TRUE)
+        df <- df[,-1]
+        df[,1] <- as.Date(df[,1])
+        
+        sname <- names(df)[-1]
+        folder <- paste0(project, "-ts-ECP-chgpt-graphs-", Sys.Date())
+        if(!file.exists(folder)){ dir.create(folder)}
+        setwd(paste(dir,folder, sep="\\"))
+
+        for (i in 1:length(sname)){
+                
+                df2.i <- df[, c(1, 1+i)]
+                df2.i$label <- factor(rep("ts", by=length(df2.i[,1])))
+                
+                ecp.mat <- matrix(df2.i[,2], ncol = 1)
+                ecp.out <- e.divisive(ecp.mat, R = 499, sig.lvl = sig, alpha = 1 )
+                ecp.est <- ecp.out$estimates[c(-1, -length(ecp.out$estimates))]#drop first and last records
+ 
+                #Helper function to index dates
+                indexer <- function(){
+                        ev <- vector(mode="numeric", length=length(ecp.est))
+                        for(j in 1:length(ecp.est)){
+                                ev[j] <- as.numeric(df2.i[ecp.est[j],1])
+                        }
+                        ev
+                }
+                
+                
+                #dates of chgpts
+                ecpdf <- data.frame(x=indexer(), label=rep("Break Points", length(indexer())))
+                date <- as.character(as.Date(indexer()))
+                
+                
+                #df for vertical line handling
+                vertdf <- data.frame(x=as.Date(survey), y=c(-Inf, Inf),
+                                     Survey=factor(year(as.Date(survey))))
+                
+                p <- ggplot()+
+                        geom_point(data=df2.i, aes_string(x="date", y=sname[i]), colour="black")+
+                        geom_line(data=df2.i, aes_string(x="date", y=sname[i]), colour="black")+
+                        geom_vline(data=ecpdf, aes(xintercept=x, linetype="Break \nPoints"),
+                                   colour = "red", show_guide=TRUE)+
+                        geom_line(aes(x,y), colour='blue', linetype=4, size = 0.5, vertdf)+
+                        coord_cartesian(ylim = c(-10, 110))+
+                        theme_bw()+
+                        xlab("")+
+                        ylab("Vegetation Cover %")+
+                        ggtitle(paste0("Site ", sname[i]))+
+                        theme(legend.title = element_blank(),
+                              axis.title.y = element_text(size=15),
+                              axis.text.y = element_text(angle=90, size=15),
+                              axis.text.x = element_text(size=15),
+                              legend.text = element_text(size = 10))
+                
+                
+                sname.i<-sname[i]
+                filename<-paste0(sname.i, "-ECP-chgpt-plot",out)
+
+                ggsave(file=filename, p, width = 22.5, height = 13.5, units = "cm")
+        }
+}
+```
+
+2. Step 2 - Define the function arguments (see examples)
+    + dir = working directory filepath where function script and **...mtsd.csv** reside. Ensure backslashes are doubled and filepath is encapsulated in " "
+    + csv = name of **...mtsd.csv** file, including .csv extension, encapsulated in " "
+    + sig = significance (p-value). Default is 0.002
+    + out = output file extension. Suggest ".pdf" for scalable vector graphics however can be ".jpeg"", ".png" etc. Suggest running with .jpeg initially to easily visually check each plot before running again to create .pdf for publication
+    + survey = "yyyy-mm-dd" of a date of significance, in this case when a veg survey was conducted. Input is used to place a vertical line on the output plot.
+    + project = name of project/specific analysis. Helps keep track of plots for different sites but within same project. This prefixes the name of the output folder
+```{r, eval=FALSE}
+dir="Z:\\DEC\\Vegmachine_SharkBay\\Working\\Bernier_Dorre\\Working\\analysis"
+csv="Bernier_Dorre_mtsd.csv"
+sig=0.002
+out=".pdf"
+survey="1998-09-01"
+project="TEC"
+```
+
+3. Step 3 - Run the function call
+```{r, eval=FALSE}
+ecp_chgpt(dir, csv, sig, survey, out, project)
+```
+
+An example.
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+dir="Z:\\DEC\\Vegmachine_SharkBay\\Working\\Bernier_Dorre\\Working\\analysis"
+csv="Bernier_Dorre_mtsd.csv"
+sig=0.002
+out=".pdf"
+survey="1998-09-01"
+project="TEC"
+
+
+is_installed <- function(mypkg) is.element(mypkg, installed.packages()[,1])
+        load_or_install<-function(package_names)  
+        {  
+                for(package_name in package_names)  
+                {  
+                        if(!is_installed(package_name))  
+                        {  
+                                install.packages(package_name,repos="http://cran.csiro.au/")  
+                        }  
+                        library(package_name,character.only=TRUE,quietly=TRUE,verbose=FALSE)  
+                }  
+        }  
+        load_or_install(c("lubridate","ggplot2", "dplyr","tidyr", "grid", "gridExtra",
+                          "ecp"))
+                
+        ##Generic tasks
+        setwd(dir)
+        df <- read.csv(csv, header = TRUE)
+        df <- df[,-1]
+        df[,1] <- as.Date(df[,1])
+        
+        sname <- names(df)[-1]
+i=1
+
+df2.i <- df[, c(1, 1+i)]
+                df2.i$label <- factor(rep("ts", by=length(df2.i[,1])))
+                
+                ecp.mat <- matrix(df2.i[,2], ncol = 1)
+                ecp.out <- e.divisive(ecp.mat, R = 499, sig.lvl = sig, alpha = 1 )
+                ecp.est <- ecp.out$estimates[c(-1, -length(ecp.out$estimates))]#drop first and last records
+ 
+                #Helper function to index dates
+                indexer <- function(){
+                        ev <- vector(mode="numeric", length=length(ecp.est))
+                        for(j in 1:length(ecp.est)){
+                                ev[j] <- as.numeric(df2.i[ecp.est[j],1])
+                        }
+                        ev
+                }
+                
+                
+                #dates of chgpts
+                ecpdf <- data.frame(x=indexer(), label=rep("Break Points", length(indexer())))
+                #date <- as.character(as.Date(indexer()))
+                
+                
+                #df for vertical line handling
+                vertdf <- data.frame(x=as.Date(survey), y=c(-Inf, Inf),
+                                     Survey=factor(year(as.Date(survey))))
+
+ggplot()+
+                        geom_point(data=df2.i, aes_string(x="date", y=sname[i]), colour="black")+
+                        geom_line(data=df2.i, aes_string(x="date", y=sname[i]), colour="black")+
+                        geom_vline(data=ecpdf, aes(xintercept=x, linetype="Break \nPoints"),
+                                   colour = "red", show_guide=TRUE)+
+                        geom_line(aes(x,y), colour='blue', linetype=4, size = 0.5, vertdf)+
+                        coord_cartesian(ylim = c(-10, 110))+
+                        theme_bw()+
+                        xlab("")+
+                        ylab("Vegetation Cover %")+
+                        ggtitle(paste0("Site ", sname[i]))+
+                        theme(legend.title = element_blank(),
+                              axis.title.y = element_text(size=15),
+                              axis.text.y = element_text(angle=90, size=15),
+                              axis.text.x = element_text(size=15),
+                              legend.text = element_text(size = 10))
+```
+
+###Errors
+If an error appears try
+```{r, eval=FALSE}
+rm(list=ls())
+```
+to clear the working environment and re-run the steps in order. If your analysis doesn't require a "*survey*" date then instances where it appears in the function need to be commented out. If problems persist have a chat to Bart.
+
+
+
+
