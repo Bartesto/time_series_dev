@@ -11,7 +11,7 @@ rm(list=ls())
 dir="Z:\\DEC\\Vegmachine_SharkBay\\Working\\Bernier_Dorre\\Working\\analysis"
 csv="Bernier_Dorre_mtsd.csv"
 sig=0.002
-out=".jpeg"
+out=".pdf"
 survey="1998-09-01"
 
 
@@ -78,12 +78,11 @@ ecp_chgpt <- function(dir, csv, sig, survey, out){
                         geom_vline(data=ecpdf, aes(xintercept=x, linetype="Break \nPoints"),
                                    colour = "red", show_guide=TRUE)+
                         geom_line(aes(x,y), colour='blue', linetype=4, size = 0.5, vertdf)+
-                        coord_cartesian(ylim = c(-10, 80))+
+                        coord_cartesian(ylim = c(-10, 110))+
                         theme_bw()+
                         xlab("")+
                         ylab("Vegetation Cover %")+
-                        annotate("text", min(df2.i[,1])+1000, 75, label = paste0("Site-",sname[i]),
-                                 size=6)+
+                        ggtitle(paste0("Site ", sname[i]))+
                         theme(legend.title = element_blank(),
                               axis.title.y = element_text(size=15),
                               axis.text.y = element_text(angle=90, size=15),
@@ -92,7 +91,7 @@ ecp_chgpt <- function(dir, csv, sig, survey, out){
                 
                 
                 sname.i<-sname[i]
-                filename<-paste0(sname.i, "ECP-chgpt-plot",out)
+                filename<-paste0(sname.i, "-ECP-chgpt-plot",out)
 
                 ggsave(file=filename, p, width = 22.5, height = 13.5, units = "cm")
         }
